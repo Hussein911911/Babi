@@ -1,0 +1,24 @@
+# مخطط نشر نظام إدارة الأدوية على Render
+# من لوحة Render اختر: New → Blueprint → ثم اختر هذا المستودع
+# وسيُنشأ كل شيء تلقائياً حسب الإعدادات أدناه.
+services:
+  - type: web
+    name: alfayd-pharma
+    runtime: node
+    # خطة مجانية للتجربة — للتسليم الفعلي للزبون يُنصح بخطة Starter
+    # حتى لا ينام السيرفر بعد فترة من عدم الاستخدام
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    envVars:
+      # قاعدة البيانات المدمجة تتطلب Node 22 أو أحدث
+      - key: NODE_VERSION
+        value: "22"
+      # مسار القرص الدائم لقاعدة البيانات (لا تضيع عند إعادة النشر)
+      - key: DATA_DIR
+        value: /var/data
+    disks:
+      - mountPath: /var/data
+        sizeGB: 1
