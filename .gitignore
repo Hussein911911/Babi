@@ -1,0 +1,17 @@
+# الاعتماديات
+node_modules/
+website-files/node_modules/
+
+# ملفات البناء
+website-files/dist/
+
+# قاعدة البيانات وملفات البيانات (تُنشأ تلقائياً وتُحفظ على الخادم)
+server/data/
+*.db
+*.db-wal
+*.db-shm
+
+# ملفات النظام والمحررات
+.DS_Store
+.env
+*.log
