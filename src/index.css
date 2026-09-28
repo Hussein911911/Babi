@@ -334,6 +334,38 @@ em { color: var(--gold-light); font-family: 'Amiri', serif; font-style: italic; 
 .back-top { display: grid; place-items: center; width: 44px; height: 44px; color: var(--white); border: 1px solid rgba(232, 198, 124, 0.3); transition: background 0.35s ease, color 0.35s ease, transform 0.35s ease; }
 .back-top:hover { color: var(--night); background: var(--gold-light); transform: translateY(-3px); }
 
+/* ======= staff access + vehicle details ======= */
+.staff-login-button { padding: 10px 13px; color: rgba(249,245,234,.8); font-size: 11px; border: 1px solid rgba(232,198,124,.28); transition: .3s ease; }
+.staff-login-button:hover { color: var(--night); background: var(--gold-light); }
+.vehicle-modal { width: min(980px, 100%); max-height: min(720px, 94vh); overflow: auto; color: var(--white); background: linear-gradient(150deg,#10264d,#081530); border: 1px solid rgba(232,198,124,.35); position: relative; }
+.vehicle-modal__image { position: relative; height: 255px; overflow: hidden; }
+.vehicle-modal__image img { width:100%; height:100%; object-fit:cover; display:block; }
+.vehicle-modal__image::after { content:''; position:absolute; inset:0; background:linear-gradient(0deg,rgba(5,13,31,.78),transparent 65%); }
+.vehicle-modal__image span { position:absolute; z-index:1; bottom:18px; left:24px; color:var(--gold-light); font:10px 'DM Mono',monospace; letter-spacing:.18em; }
+.vehicle-modal__body { padding: 28px 34px 34px; }
+.vehicle-modal h2 { margin: 12px 0 6px; font: 500 29px 'DM Mono',monospace; direction:ltr; text-align:right; letter-spacing:.06em; }
+.vehicle-modal h2 em { font-family:'Amiri',serif; font-size:22px; }
+.vehicle-lead { margin:0 0 22px; color:rgba(249,245,234,.65); font-size:13px; }
+.vehicle-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; margin-bottom:24px; background:rgba(232,198,124,.2); }
+.vehicle-stats div { padding:15px; background:#0b1d3d; }
+.vehicle-stats small { display:block; color:rgba(249,245,234,.5); font-size:10px; margin-bottom:6px; }
+.vehicle-stats b { font-size:14px; font-weight:500; }
+.vehicle-stats i { color:var(--gold-light); font-size:10px; font-style:normal; }
+.vehicle-columns { display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-bottom:25px; }
+.vehicle-columns h4 { margin:0 0 12px; color:var(--gold-light); font-size:14px; }
+.vehicle-columns span { display:flex; align-items:center; gap:8px; color:rgba(249,245,234,.7); font-size:12px; margin:9px 0; }
+.vehicle-columns span svg { color:var(--gold-light); flex:none; }
+.vehicle-modal .form-submit { width:100%; }
+.auth-modal { width:min(500px,100%); }
+.role-switch { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:-5px 0 18px; }
+.role-switch button { padding:11px; color:rgba(249,245,234,.6); border:1px solid rgba(232,198,124,.2); font-size:12px; }
+.role-switch button.is-active { color:var(--night); background:var(--gold-light); }
+.auth-error { color:#efaa8e; font-size:11px; }
+.demo-credentials { margin-top:18px; padding:11px; color:rgba(249,245,234,.48); background:rgba(5,13,31,.35); font:10px 'DM Mono',monospace; direction:ltr; text-align:center; }
+.dashboard-mini { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:20px 0 26px; }
+.dashboard-mini span { padding:15px 10px; color:rgba(249,245,234,.65); background:rgba(5,13,31,.35); font-size:11px; text-align:center; }
+.dashboard-mini b { display:block; color:var(--gold-light); font:24px 'DM Mono',monospace; margin-top:5px; }
+
 /* ======= modal ======= */
 .modal-backdrop { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px; background: rgba(5, 13, 31, 0.78); backdrop-filter: blur(8px); overflow-y: auto; }
 .booking-modal { position: relative; width: min(520px, 100%); padding: 52px 46px 44px; color: var(--white); background: linear-gradient(170deg, #10264d, #0a1a38); border: 1px solid rgba(232, 198, 124, 0.35); }
