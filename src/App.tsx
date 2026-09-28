@@ -1,18 +1,17 @@
-import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, animate, motion, useInView, useScroll, useSpring, useTransform } from 'motion/react';
+import Lenis from 'lenis';
 
 type IconName =
   | 'arrow'
   | 'arrowUp'
   | 'calendar'
   | 'check'
-  | 'chevron'
   | 'close'
   | 'compass'
   | 'menu'
   | 'phone'
-  | 'play'
-  | 'search'
-  | 'spark';
+  | 'search';
 
 type Frame = {
   src: string;
@@ -20,10 +19,12 @@ type Frame = {
   title: string;
   detail: string;
   location: string;
+  model: string;
 };
 
 type Car = {
   name: string;
+  arabicName: string;
   type: string;
   price: string;
   year: string;
@@ -33,35 +34,44 @@ type Car = {
 
 const frames: Frame[] = [
   {
-    src: '/assets/aurum-hero.png',
-    eyebrow: '01 / حضور',
-    title: 'السيارة التي\nتسبق وصولك.',
-    detail: 'من بغداد، إلى أي طريق تختاره.',
-    location: 'بغداد — شارع أبو نواس',
+    src: '/assets/babylon-hero.png',
+    eyebrow: '01 / بوابة عشتار',
+    title: 'من بوابة عشتار،\nيبدأ الطريق.',
+    detail: 'إرث سبعة آلاف عام، بمحرّك اليوم.',
+    location: 'بوابة عشتار — بابل',
+    model: 'AURUM ISHTAR',
   },
   {
-    src: '/assets/aurum-showroom.png',
-    eyebrow: '02 / تفصيل',
-    title: 'قوة هادئة.\nحضور لا يُنسى.',
-    detail: 'كل خط، وكل انعكاس، صُمّم ليبقى.',
+    src: '/assets/babylon-showroom.png',
+    eyebrow: '02 / بلاط الملوك',
+    title: 'فخامة تليق\nبورثة بابل.',
+    detail: 'كل تفصيلة منحوتة، كما نُحتت الأسود على الآجر المزجّج.',
     location: 'صالة أوروم — بغداد',
+    model: 'AURUM BABEL',
   },
   {
-    src: '/assets/aurum-desert.png',
-    eyebrow: '03 / امتداد',
-    title: 'صُمّمت لتصل\nأبعد.',
-    detail: 'اختر مسارك. نحن نجهّز الباقي.',
-    location: 'طريق الصحراء — العراق',
+    src: '/assets/babylon-ziggurat.png',
+    eyebrow: '03 / زقّورة أور',
+    title: 'صُمّمت لتصعد\nأعلى.',
+    detail: 'من سهول الرافدين، إلى أي أفقٍ تختاره.',
+    location: 'زقّورة أور — ذي قار',
+    model: 'AURUM ZIQQURA GT',
   },
 ];
 
 const cars: Car[] = [
-  { name: 'AURUM S7', type: 'سيدان فاخرة', price: '78,500,000', year: '2025', image: '/assets/aurum-hero.png', tag: 'الأكثر طلباً' },
-  { name: 'AURUM S7 BLACK', type: 'إصدار خاص', price: '86,900,000', year: '2025', image: '/assets/aurum-showroom.png', tag: 'حصري' },
-  { name: 'AURUM GT', type: 'جراند تورر', price: '94,200,000', year: '2024', image: '/assets/aurum-desert.png' },
+  { name: 'AURUM ISHTAR', arabicName: 'عشتار', type: 'سيدان ملكية', price: '78,500,000', year: '2025', image: '/assets/babylon-hero.png', tag: 'الأكثر طلباً' },
+  { name: 'AURUM BABEL', arabicName: 'بابل', type: 'إصدار خاص', price: '86,900,000', year: '2025', image: '/assets/babylon-showroom.png', tag: 'حصري' },
+  { name: 'AURUM ZIQQURA GT', arabicName: 'زقّورة', type: 'جراند تورر', price: '94,200,000', year: '2024', image: '/assets/babylon-ziggurat.png' },
 ];
 
 const filters = ['الكل', 'سيدان', 'إصدار خاص', 'جراند تورر'];
+
+const marqueeItems = ['𒀭', 'بــابــل', '𒆠', 'عشــتار', '𒈗', 'حمّورابي', '𒌓', 'دجلة والفرات', '𒐕', 'زقّورة أور', '𒄑', 'بوابة عشتار'];
+
+const easing = [0.22, 1, 0.36, 1] as const;
+
+/* ---------- icons ---------- */
 
 function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
@@ -74,8 +84,6 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       return <svg {...common}><rect x="3.5" y="5" width="17" height="16" rx="2" /><path d="M16 3v4M8 3v4M3.5 10h17" /></svg>;
     case 'check':
       return <svg {...common}><path d="m5 12 4.3 4L19 7" /></svg>;
-    case 'chevron':
-      return <svg {...common}><path d="m6 9 6 6 6-6" /></svg>;
     case 'close':
       return <svg {...common}><path d="m6 6 12 12M18 6 6 18" /></svg>;
     case 'compass':
@@ -84,34 +92,142 @@ function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
       return <svg {...common}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
     case 'phone':
       return <svg {...common}><path d="M6.5 4.5 9 4l1.7 4-1.8 1.6a14.7 14.7 0 0 0 5.5 5.5l1.6-1.8 4 1.7-.5 2.5c-.2 1.1-1.2 1.8-2.3 1.7C10.3 18.4 5.6 13.7 4.8 6.8c-.1-1.1.6-2.1 1.7-2.3Z" /></svg>;
-    case 'play':
-      return <svg {...common} fill="currentColor" stroke="none"><path d="m9 6 9 6-9 6V6Z" /></svg>;
     case 'search':
       return <svg {...common}><circle cx="10.8" cy="10.8" r="6.3" /><path d="m16 16 4.2 4.2" /></svg>;
-    case 'spark':
-      return <svg {...common}><path d="m12 3 1.5 6.5L20 12l-6.5 1.5L12 20l-1.5-6.5L4 12l6.5-2.5L12 3Z" /></svg>;
   }
+}
+
+/* ---------- babylonian ornaments ---------- */
+
+function ZigguratGlyph({ size = 30 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+      <rect x="13" y="5" width="6" height="5" />
+      <rect x="10" y="11.5" width="12" height="5" />
+      <rect x="7" y="18" width="18" height="5" />
+      <rect x="4" y="24.5" width="24" height="4" />
+    </svg>
+  );
+}
+
+function IshtarStar({ size = 120, className = '' }: { size?: number; className?: string }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 100 100" fill="currentColor" aria-hidden="true">
+      <path d="M50 0 57 43 100 50 57 57 50 100 43 57 0 50 43 43Z" />
+      <path d="M50 0 57 43 100 50 57 57 50 100 43 57 0 50 43 43Z" transform="rotate(45 50 50)" opacity="0.5" />
+      <circle cx="50" cy="50" r="6.5" />
+    </svg>
+  );
+}
+
+function Rosette({ size = 26 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" aria-hidden="true">
+      <g fill="none" stroke="currentColor" strokeWidth="1.4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <ellipse key={i} cx="20" cy="11" rx="4.2" ry="7.4" transform={`rotate(${i * 45} 20 20)`} />
+        ))}
+      </g>
+      <circle cx="20" cy="20" r="3.2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function ZigguratDivider({ className = '' }: { className?: string }) {
+  return (
+    <div className={`zg-divider ${className}`} aria-hidden="true">
+      <svg viewBox="0 0 1440 96" preserveAspectRatio="none">
+        <path d="M0 0h1440v30H872v16h-26v16h-26v16h-26v18H646v-18h-26v-16h-26v-16h-26V30H0Z" />
+      </svg>
+      <span className="zg-divider__star"><IshtarStar size={26} /></span>
+    </div>
+  );
+}
+
+function BabylonMark({ inverse = false }: { inverse?: boolean }) {
+  return (
+    <div className={`brand-mark ${inverse ? 'brand-mark--inverse' : ''}`} aria-label="Aurum Motors — بابل">
+      <span className="brand-mark__glyph"><ZigguratGlyph size={26} /></span>
+      <span className="brand-mark__word">AURUM<small>بــابــل · العــراق</small></span>
+    </div>
+  );
+}
+
+/* ---------- motion helpers ---------- */
+
+function Reveal({ children, delay = 0, y = 36, className = '' }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
+  return (
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-70px' }}
+      transition={{ duration: 0.9, delay, ease: easing }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function CountUp({ value, suffix }: { value: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  useEffect(() => {
+    if (!inView || !ref.current) return;
+    const controls = animate(0, value, {
+      duration: 2,
+      ease: easing,
+      onUpdate: (latest) => { if (ref.current) ref.current.textContent = String(Math.round(latest)); },
+    });
+    return () => controls.stop();
+  }, [inView, value]);
+  return (
+    <strong className="count-figure">
+      <span ref={ref}>0</span>
+      {suffix && <span className="count-suffix">{suffix}</span>}
+    </strong>
+  );
+}
+
+function CuneiformMarquee() {
+  const row = (key: string) => (
+    <div className="marquee__row" key={key} aria-hidden={key === 'b'}>
+      {marqueeItems.map((item, index) => (
+        <span className="marquee__item" key={`${key}-${index}`}>
+          <span className={/[\u{12000}-\u{123FF}\u{12400}-\u{1247F}]/u.test(item) ? 'marquee__cuneiform' : 'marquee__word'}>{item}</span>
+          <span className="marquee__rosette"><Rosette size={16} /></span>
+        </span>
+      ))}
+    </div>
+  );
+  return (
+    <div className="marquee" dir="ltr">
+      <motion.div
+        className="marquee__track"
+        animate={{ x: ['0%', '-50%'] }}
+        transition={{ duration: 38, ease: 'linear', repeat: Infinity }}
+      >
+        {row('a')}
+        {row('b')}
+      </motion.div>
+    </div>
+  );
 }
 
 function clamp(value: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, value));
 }
 
-function AurumMark({ inverse = false }: { inverse?: boolean }) {
-  return (
-    <div className={`aurum-mark ${inverse ? 'aurum-mark--inverse' : ''}`} aria-label="Aurum Motors">
-      <span className="aurum-mark__symbol">A</span>
-      <span className="aurum-mark__word">AURUM<small>MOTORS</small></span>
-    </div>
-  );
-}
+/* ---------- app ---------- */
 
 function App() {
   const heroRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const heritageRef = useRef<HTMLElement>(null);
   const imagesRef = useRef<HTMLImageElement[]>([]);
   const scrollProgressRef = useRef(0);
   const renderRef = useRef<(progress: number) => void>(() => undefined);
+  const lenisRef = useRef<Lenis | null>(null);
   const [progress, setProgress] = useState(0);
   const [loadedCount, setLoadedCount] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
@@ -119,30 +235,73 @@ function App() {
   const [activeFilter, setActiveFilter] = useState('الكل');
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  const { scrollYProgress } = useScroll();
+  const pageProgress = useSpring(scrollYProgress, { stiffness: 130, damping: 28, mass: 0.4 });
+
+  const { scrollYProgress: heritageProgress } = useScroll({ target: heritageRef, offset: ['start end', 'end start'] });
+  const heritageY = useTransform(heritageProgress, [0, 1], ['-14%', '14%']);
+
+  const dust = useMemo(
+    () =>
+      Array.from({ length: 20 }, (_, index) => ({
+        id: index,
+        left: Math.random() * 100,
+        size: 2 + Math.random() * 3.2,
+        delay: Math.random() * 14,
+        duration: 12 + Math.random() * 16,
+        opacity: 0.2 + Math.random() * 0.55,
+      })),
+    [],
+  );
 
   const scrollTo = useCallback((id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    const lenis = lenisRef.current;
+    if (lenis) lenis.scrollTo(`#${id}`, { duration: 1.6 });
+    else document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
     setMenuOpen(false);
+    setSearchOpen(false);
   }, []);
 
+  /* smooth scrolling */
   useEffect(() => {
+    const lenis = new Lenis({ duration: 1.15, smoothWheel: true });
+    lenisRef.current = lenis;
+    let rafId = 0;
+    const raf = (time: number) => {
+      lenis.raf(time);
+      rafId = requestAnimationFrame(raf);
+    };
+    rafId = requestAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(rafId);
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+
+  /* preload cinematic frames */
+  useEffect(() => {
+    const advance = (index: number) => {
+      setLoadedCount((current) => Math.max(current, index + 1));
+      renderRef.current(scrollProgressRef.current);
+    };
     const nextImages = frames.map((frame, index) => {
       const image = new Image();
       image.decoding = 'async';
       image.src = frame.src;
-      image.onload = () => {
-        setLoadedCount((current) => Math.max(current, index + 1));
-        renderRef.current(scrollProgressRef.current);
-      };
+      image.onload = () => advance(index);
+      image.onerror = () => advance(index);
       return image;
     });
     imagesRef.current = nextImages;
-
     return () => {
-      nextImages.forEach((image) => { image.onload = null; });
+      nextImages.forEach((image) => { image.onload = null; image.onerror = null; });
     };
   }, []);
 
+  /* hero canvas scroll-sequence */
   useEffect(() => {
     const canvas = canvasRef.current;
     const hero = heroRef.current;
@@ -162,7 +321,7 @@ function App() {
     };
 
     const drawCover = (image: HTMLImageElement, alpha: number, slide: number, zoom: number) => {
-      if (!image.complete || !image.naturalWidth) return;
+      if (!image || !image.complete || !image.naturalWidth) return;
       const width = window.innerWidth;
       const height = window.innerHeight;
       const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight) * zoom;
@@ -178,7 +337,7 @@ function App() {
       const width = window.innerWidth;
       const height = window.innerHeight;
       context.clearRect(0, 0, width, height);
-      context.fillStyle = '#141311';
+      context.fillStyle = '#050d1f';
       context.fillRect(0, 0, width, height);
 
       const stage = value * (frames.length - 1);
@@ -200,6 +359,7 @@ function App() {
       const value = clamp(-bounds.top / range);
       scrollProgressRef.current = value;
       setProgress(value);
+      setScrolled(window.scrollY > 24);
       cancelAnimationFrame(animationFrame);
       animationFrame = requestAnimationFrame(() => renderRef.current(value));
     };
@@ -215,10 +375,22 @@ function App() {
     };
   }, []);
 
-  const activeFrame = Math.min(frames.length - 1, Math.round(progress * (frames.length - 1)));
+  /* lock body scroll while the modal is open */
+  useEffect(() => {
+    if (!modalOpen) return;
+    lenisRef.current?.stop();
+    document.body.style.overflow = 'hidden';
+    return () => {
+      lenisRef.current?.start();
+      document.body.style.overflow = '';
+    };
+  }, [modalOpen]);
+
+  const stage = progress * (frames.length - 1);
+  const activeFrame = Math.min(frames.length - 1, Math.round(stage));
   const filteredCars = cars.filter((car) => {
     if (activeFilter === 'الكل') return true;
-    if (activeFilter === 'سيدان') return car.type === 'سيدان فاخرة';
+    if (activeFilter === 'سيدان') return car.type === 'سيدان ملكية';
     if (activeFilter === 'إصدار خاص') return car.type === 'إصدار خاص';
     return car.type === 'جراند تورر';
   });
@@ -228,22 +400,52 @@ function App() {
     setSubmitted(true);
   };
 
+  const closeModal = () => {
+    setModalOpen(false);
+    setSubmitted(false);
+  };
+
   return (
     <main className="site-shell">
-      <section ref={heroRef} id="experience" className="hero-scroll" aria-label="تجربة أوروم السينمائية">
+      <motion.div className="page-progress" style={{ scaleX: pageProgress }} aria-hidden="true" />
+
+      {/* ======= hero ======= */}
+      <section ref={heroRef} id="experience" className="hero-scroll" aria-label="تجربة أوروم البابلية">
         <div className="hero-sticky">
-          <canvas ref={canvasRef} className="hero-canvas" aria-label="تجربة بصرية لسيارات أوروم" />
+          <canvas ref={canvasRef} className="hero-canvas" aria-label="مشاهد سينمائية لسيارات أوروم أمام معالم بابل" />
           <div className="hero-overlay" />
           <div className="hero-grain" />
+          <div className="hero-dust" aria-hidden="true">
+            {dust.map((particle) => (
+              <span
+                key={particle.id}
+                style={{
+                  left: `${particle.left}%`,
+                  width: particle.size,
+                  height: particle.size,
+                  animationDelay: `${particle.delay}s`,
+                  animationDuration: `${particle.duration}s`,
+                  opacity: particle.opacity,
+                }}
+              />
+            ))}
+          </div>
+          <div className="hero-frame" aria-hidden="true">
+            <span className="hero-frame__corner hero-frame__corner--tl"><Rosette size={20} /></span>
+            <span className="hero-frame__corner hero-frame__corner--tr"><Rosette size={20} /></span>
+            <span className="hero-frame__corner hero-frame__corner--bl"><Rosette size={20} /></span>
+            <span className="hero-frame__corner hero-frame__corner--br"><Rosette size={20} /></span>
+          </div>
 
-          <header className="topbar content-width">
-            <button className="mobile-menu-button" aria-label="فتح القائمة" onClick={() => setMenuOpen((value) => !value)}>
+          <header className={`topbar content-width ${scrolled ? 'topbar--scrolled' : ''}`}>
+            <button className="mobile-menu-button" aria-label={menuOpen ? 'إغلاق القائمة' : 'فتح القائمة'} onClick={() => setMenuOpen((value) => !value)}>
               <Icon name={menuOpen ? 'close' : 'menu'} size={21} />
             </button>
-            <button className="topbar-logo" onClick={() => scrollTo('experience')}><AurumMark inverse /></button>
+            <button className="topbar-logo" onClick={() => scrollTo('experience')}><BabylonMark inverse /></button>
             <nav className={`main-nav ${menuOpen ? 'main-nav--open' : ''}`}>
               <button onClick={() => scrollTo('collection')}>المجموعة</button>
               <button onClick={() => scrollTo('philosophy')}>فلسفتنا</button>
+              <button onClick={() => scrollTo('heritage')}>الإرث</button>
               <button onClick={() => scrollTo('visit')}>صالة العرض</button>
               <span className="nav-divider" />
               <button className="language-button">EN <span>العربية</span></button>
@@ -254,18 +456,48 @@ function App() {
               </button>
               <button className="topbar-cta" onClick={() => setModalOpen(true)}>احجز تجربة قيادة <Icon name="arrow" size={15} /></button>
             </div>
-            {searchOpen && <div className="search-popover"><span>ابحث في أوروم</span><input autoFocus placeholder="مثلاً: AURUM S7" /></div>}
+            <AnimatePresence>
+              {searchOpen && (
+                <motion.div
+                  className="search-popover"
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.35, ease: easing }}
+                >
+                  <div className="search-field">
+                    <Icon name="search" size={16} />
+                    <input
+                      autoFocus
+                      placeholder="ابحث عن طرازك…"
+                      onKeyDown={(event) => { if (event.key === 'Enter') scrollTo('collection'); }}
+                    />
+                  </div>
+                  <div className="search-suggestions">
+                    {cars.map((car) => (
+                      <button key={car.name} onClick={() => scrollTo('collection')}>
+                        <span>{car.name}</span><small>{car.type}</small>
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </header>
 
-          <div className="hero-content content-width">
-            <div className="hero-copy-wrap">
+          <div className="hero-stage content-width">
+            <div className="hero-copy-stack">
               {frames.map((frame, index) => {
-                const distance = Math.abs(progress * (frames.length - 1) - index);
-                const opacity = clamp(1 - distance * 2.4);
-                const translate = (index - progress * (frames.length - 1)) * 20;
+                const distance = stage - index;
+                const opacity = clamp(1 - Math.abs(distance) * 1.7);
+                const translate = distance * -42;
                 return (
-                  <div key={frame.eyebrow} className="hero-copy" style={{ opacity, transform: `translateY(${translate}px)`, pointerEvents: opacity > 0.5 ? 'auto' : 'none' }}>
-                    <div className="eyebrow"><span className="eyebrow-line" />{frame.eyebrow}<span className="eyebrow-en">AURUM / IRAQ</span></div>
+                  <div
+                    key={frame.eyebrow}
+                    className="hero-copy"
+                    style={{ opacity, transform: `translateY(${translate}px)`, pointerEvents: opacity > 0.5 ? 'auto' : 'none' }}
+                  >
+                    <div className="eyebrow"><span className="eyebrow-line" />{frame.eyebrow}<span className="eyebrow-en">BABYLON / IRAQ</span></div>
                     <h1>{frame.title.split('\n').map((line) => <span key={line}>{line}</span>)}</h1>
                     <p>{frame.detail}</p>
                     <button className="hero-button" onClick={() => scrollTo('collection')}>
@@ -277,17 +509,23 @@ function App() {
             </div>
 
             <div className="hero-side-note">
-              <span className="side-note-index">{String(activeFrame + 1).padStart(2, '0')}</span>
+              <motion.span
+                className="side-note-star"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 46, ease: 'linear', repeat: Infinity }}
+              >
+                <IshtarStar size={38} />
+              </motion.span>
               <span className="side-note-rule" />
-              <span>قصة تتحرك معك</span>
+              <span className="side-note-text">حكاية تُروى منذ بابل</span>
             </div>
           </div>
 
           <div className="hero-bottom content-width">
             <div className="hero-location"><Icon name="compass" size={16} /><span>{frames[activeFrame].location}</span></div>
             <div className="scroll-prompt"><span>مرّر لاكتشاف القصة</span><span className="scroll-line"><i style={{ height: `${Math.max(12, progress * 100)}%` }} /></span></div>
-            <div className="hero-sequence" aria-label={`المشهد ${activeFrame + 1} من 3`}>
-              <span>مشهد</span>
+            <div className="hero-sequence" aria-label={`اللوح ${activeFrame + 1} من 3`}>
+              <span>لوح</span>
               <strong>0{activeFrame + 1}</strong>
               <span className="sequence-slash">/</span>
               <span>03</span>
@@ -297,76 +535,312 @@ function App() {
 
           <div className="floating-spec-card">
             <div className="spec-card-top"><span>الطراز الظاهر</span><span className="live-dot">LIVE</span></div>
-            <strong>{activeFrame === 2 ? 'AURUM GT' : 'AURUM S7'}</strong>
+            <strong>{frames[activeFrame].model}</strong>
             <div className="spec-card-meta"><span>V6 / 3.0L</span><span>× 470 حصان</span><span>AWD</span></div>
+            <div className="spec-card-cuneiform" aria-hidden="true">𒀭 𒈗 𒆠 𒌓</div>
           </div>
         </div>
       </section>
 
+      {/* ======= cuneiform marquee ======= */}
+      <div className="marquee-band">
+        <CuneiformMarquee />
+      </div>
+
+      {/* ======= philosophy ======= */}
       <section className="manifesto-section section-dark" id="philosophy">
+        <div className="brick-glow" aria-hidden="true" />
+        <motion.div
+          className="manifesto-star"
+          aria-hidden="true"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 90, ease: 'linear', repeat: Infinity }}
+        >
+          <IshtarStar size={430} />
+        </motion.div>
         <div className="content-width manifesto-grid">
-          <div className="section-kicker"><span className="kicker-number">01</span><span className="kicker-line" /><span>الفلسفة</span></div>
+          <Reveal className="section-kicker"><span className="kicker-number">01</span><span className="kicker-line" /><span>الفلسفة</span></Reveal>
           <div className="manifesto-copy">
-            <p className="display-intro">في أوروم، لا نبيع<br /><em>سيارة.</em> نصنع حضوراً.</p>
-            <p className="body-copy">نختار سياراتنا كما تُختار القطع النادرة: بعين تعرف الفرق، وبمعيار لا يساوم على التفاصيل. سيارات تصل إلى العراق لتمنحك إحساساً لا يشبه سواه.</p>
-            <button className="text-link" onClick={() => scrollTo('visit')}>تعرّف على أوروم <Icon name="arrow" size={16} /></button>
+            <Reveal><p className="display-intro">في أوروم، لا نبيع<br /><em>سيارة.</em> نصنع إرثاً.</p></Reveal>
+            <Reveal delay={0.15}>
+              <p className="body-copy">
+                من الأرض التي علّمت العالم الكتابة والقانون والعجلة، نختار سياراتنا كما اختار ملوك بابل
+                آجرّ بوابة عشتار: قطعةً قطعة، بعينٍ لا تساوم على التفاصيل. سيارات تصل إلى العراق
+                لتليق بأرضٍ صنعت الحضارة.
+              </p>
+            </Reveal>
+            <Reveal delay={0.28}>
+              <button className="text-link" onClick={() => scrollTo('visit')}>تعرّف على أوروم <Icon name="arrow" size={16} /></button>
+            </Reveal>
           </div>
-          <div className="manifesto-stamp"><span>EST.</span><strong>2014</strong><span>BAGHDAD · IRAQ</span></div>
+          <Reveal delay={0.2} className="manifesto-stamp-wrap">
+            <div className="manifesto-stamp">
+              <span className="stamp-cuneiform" aria-hidden="true">𒆍𒀭𒊏𒆠</span>
+              <span>EST.</span><strong>2014</strong><span>BABYLON · IRAQ</span>
+            </div>
+          </Reveal>
         </div>
       </section>
 
+      {/* ======= collection ======= */}
       <section className="collection-section section-cream" id="collection">
+        <ZigguratDivider className="zg-divider--dark-to-cream" />
         <div className="content-width">
           <div className="section-heading-row">
-            <div><div className="section-kicker section-kicker--dark"><span className="kicker-number">02</span><span className="kicker-line" /><span>المجموعة</span></div><h2 className="section-title">اختيارات<br /><em>لافتة.</em></h2></div>
-            <div className="heading-aside"><span>كل سيارة في مجموعتنا<br />مختارة بعناية.</span><button className="round-arrow" onClick={() => scrollTo('visit')}><Icon name="arrow" size={18} /></button></div>
+            <Reveal>
+              <div className="section-kicker section-kicker--dark"><span className="kicker-number">02</span><span className="kicker-line" /><span>المجموعة</span></div>
+              <h2 className="section-title">اختيارات تليق<br /><em>بالملوك.</em></h2>
+            </Reveal>
+            <Reveal delay={0.15} className="heading-aside">
+              <span>كل سيارة في مجموعتنا<br />مختارة كقطعة متحف.</span>
+              <button className="round-arrow" onClick={() => scrollTo('visit')} aria-label="إلى صالة العرض"><Icon name="arrow" size={18} /></button>
+            </Reveal>
           </div>
-          <div className="filter-bar">
-            <div className="filter-tabs">{filters.map((filter) => <button key={filter} className={activeFilter === filter ? 'is-active' : ''} onClick={() => setActiveFilter(filter)}>{filter}</button>)}</div>
-            <span className="filter-count">{String(filteredCars.length).padStart(2, '0')} سيارات</span>
-          </div>
-          <div className="car-grid">
-            {filteredCars.map((car, index) => <article className={`car-card car-card--${index + 1}`} key={car.name}>
-              <div className="car-image-wrap"><img src={car.image} alt={car.name} /><div className="car-image-shade" />{car.tag && <span className="car-tag">{car.tag}</span>}<span className="car-number">0{index + 1}</span><button className="card-arrow" aria-label={`تفاصيل ${car.name}`} onClick={() => setModalOpen(true)}><Icon name="arrow" size={17} /></button></div>
-              <div className="car-info"><div><h3>{car.name}</h3><span>{car.type} · {car.year}</span></div><div className="car-price"><span>ابتداءً من</span><strong>{car.price} <small>د.ع</small></strong></div></div>
-            </article>)}
-          </div>
-          <div className="collection-footer"><span>01 — 0{filteredCars.length}</span><div className="collection-rule" /><span>معرض أوروم، بغداد</span></div>
+          <Reveal delay={0.1}>
+            <div className="filter-bar">
+              <div className="filter-tabs">
+                {filters.map((filter) => (
+                  <button key={filter} className={activeFilter === filter ? 'is-active' : ''} onClick={() => setActiveFilter(filter)}>
+                    {filter}
+                    {activeFilter === filter && <motion.span layoutId="filter-pill" className="filter-pill" transition={{ duration: 0.45, ease: easing }} />}
+                  </button>
+                ))}
+              </div>
+              <span className="filter-count">{String(filteredCars.length).padStart(2, '0')} سيارات</span>
+            </div>
+          </Reveal>
+          <motion.div className="car-grid" layout>
+            <AnimatePresence mode="popLayout">
+              {filteredCars.map((car, index) => (
+                <motion.article
+                  layout
+                  className="car-card"
+                  key={car.name}
+                  initial={{ opacity: 0, y: 44 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.94 }}
+                  viewport={{ once: true, margin: '-60px' }}
+                  transition={{ duration: 0.75, delay: index * 0.12, ease: easing }}
+                >
+                  <div className="car-frame-band" aria-hidden="true" />
+                  <div className="car-image-wrap">
+                    <motion.img src={car.image} alt={car.name} whileHover={{ scale: 1.06 }} transition={{ duration: 0.9, ease: easing }} />
+                    <div className="car-image-shade" />
+                    {car.tag && <span className="car-tag">{car.tag}</span>}
+                    <span className="car-number">0{index + 1}</span>
+                    <span className="car-rosette" aria-hidden="true"><Rosette size={22} /></span>
+                    <button className="card-arrow" aria-label={`تفاصيل ${car.name}`} onClick={() => setModalOpen(true)}><Icon name="arrow" size={17} /></button>
+                  </div>
+                  <div className="car-info">
+                    <div>
+                      <h3>{car.name} <em className="car-arabic">«{car.arabicName}»</em></h3>
+                      <span>{car.type} · {car.year}</span>
+                    </div>
+                    <div className="car-price"><span>ابتداءً من</span><strong>{car.price} <small>د.ع</small></strong></div>
+                  </div>
+                </motion.article>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+          <Reveal delay={0.1}>
+            <div className="collection-footer"><span>01 — 0{filteredCars.length}</span><div className="collection-rule" /><span>معرض أوروم، بغداد</span></div>
+          </Reveal>
         </div>
       </section>
 
+      {/* ======= heritage parallax band ======= */}
+      <section className="heritage-band" id="heritage" ref={heritageRef}>
+        <motion.div className="heritage-media" style={{ y: heritageY }} aria-hidden="true">
+          <img src="/assets/babylon-hero.png" alt="" />
+        </motion.div>
+        <div className="heritage-overlay" />
+        <div className="content-width heritage-content">
+          <Reveal>
+            <span className="heritage-cuneiform" aria-hidden="true">𒀊𒆠𒈾 𒆍𒀭𒊏𒆠</span>
+            <blockquote>
+              «على أرضِ الرافدين، دارت <em>أوّل عجلةٍ</em> في التاريخ.»
+            </blockquote>
+            <p className="heritage-sub">ومنها، نُكمل نحن المسير — أوروم موتورز</p>
+          </Reveal>
+          <motion.span
+            className="heritage-star"
+            aria-hidden="true"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 60, ease: 'linear', repeat: Infinity }}
+          >
+            <IshtarStar size={72} />
+          </motion.span>
+        </div>
+      </section>
+
+      {/* ======= numbers ======= */}
       <section className="numbers-section section-dark">
         <div className="content-width numbers-layout">
-          <div className="numbers-lead"><div className="section-kicker"><span className="kicker-number">03</span><span className="kicker-line" /><span>لماذا أوروم؟</span></div><h2>الفرق<br /><em>في التفاصيل.</em></h2><p>لأن امتلاك سيارة فاخرة لا يبدأ من المقود فقط. يبدأ من الطريقة التي تجد بها سيارتك، ومن الشخص الذي يقف معك بعدها.</p></div>
-          <div className="numbers-list"><div className="number-item"><strong>10<span>+</span></strong><div><b>سنوات من الخبرة</b><span>نختار الأفضل للسوق العراقي</span></div></div><div className="number-item"><strong>48</strong><div><b>ساعة للتسليم</b><span>من الاختيار إلى بابك</span></div></div><div className="number-item"><strong>360<span>°</span></strong><div><b>خدمة ما بعد البيع</b><span>فريقك معنا في كل كيلومتر</span></div></div></div>
-          <div className="numbers-aside"><span className="vertical-label">AURUM STANDARD / 2025</span><div className="line-orb"><span /></div></div>
+          <div className="numbers-lead">
+            <Reveal className="section-kicker"><span className="kicker-number">03</span><span className="kicker-line" /><span>لماذا أوروم؟</span></Reveal>
+            <Reveal delay={0.1}><h2>الفرق<br /><em>في التفاصيل.</em></h2></Reveal>
+            <Reveal delay={0.2}><p>لأن امتلاك سيارة فاخرة لا يبدأ من المقود فقط. يبدأ من الطريقة التي تجد بها سيارتك، ومن الشخص الذي يقف معك بعدها — كما وقفت أسوار بابل، قروناً.</p></Reveal>
+          </div>
+          <div className="numbers-list">
+            <Reveal delay={0.05} className="number-item">
+              <CountUp value={10} suffix="+" />
+              <div><b>سنوات من الخبرة</b><span>نختار الأفضل للسوق العراقي</span></div>
+            </Reveal>
+            <Reveal delay={0.18} className="number-item">
+              <CountUp value={48} />
+              <div><b>ساعة للتسليم</b><span>من الاختيار إلى بابك</span></div>
+            </Reveal>
+            <Reveal delay={0.3} className="number-item">
+              <CountUp value={360} suffix="°" />
+              <div><b>خدمة ما بعد البيع</b><span>فريقك معنا في كل كيلومتر</span></div>
+            </Reveal>
+          </div>
+          <div className="numbers-aside">
+            <span className="vertical-label">BABYLON STANDARD / 2025</span>
+            <div className="line-orb"><span /></div>
+          </div>
         </div>
       </section>
 
+      {/* ======= visit ======= */}
       <section className="experience-section section-cream" id="visit">
+        <ZigguratDivider className="zg-divider--dark-to-cream" />
         <div className="content-width experience-grid">
-          <div className="experience-copy"><div className="section-kicker section-kicker--dark"><span className="kicker-number">04</span><span className="kicker-line" /><span>تجربة أوروم</span></div><h2>اقترب من<br /><em>اختيارك.</em></h2><p>الصور تعطيك فكرة. التجربة تمنحك الإجابة. تعال إلى صالتنا في بغداد، ودع الطريق يختار معك.</p><button className="dark-button" onClick={() => setModalOpen(true)}>احجز تجربة قيادة <Icon name="arrow" size={16} /></button></div>
-          <div className="experience-card"><div className="experience-card__top"><span>THE AURUM HOUSE</span><span>بغداد / العراق</span></div><div className="experience-card__middle"><span className="experience-orbit"><span /></span><div><span>مفتوحون يومياً</span><strong>09:00 — 21:00</strong></div></div><div className="experience-card__bottom"><span>شارع الأميرات، المنصور</span><button aria-label="اتصل بأوروم"><Icon name="phone" size={16} /></button></div></div>
+          <div className="experience-copy">
+            <Reveal className="section-kicker section-kicker--dark"><span className="kicker-number">04</span><span className="kicker-line" /><span>تجربة أوروم</span></Reveal>
+            <Reveal delay={0.1}><h2>اقترب من<br /><em>اختيارك.</em></h2></Reveal>
+            <Reveal delay={0.2}><p>الصور تعطيك فكرة. التجربة تمنحك الإجابة. تعال إلى صالتنا في بغداد — بلاطٌ أزرق كآجرّ عشتار، وسياراتٌ تنتظر طريقها معك.</p></Reveal>
+            <Reveal delay={0.3}><button className="dark-button" onClick={() => setModalOpen(true)}>احجز تجربة قيادة <Icon name="arrow" size={16} /></button></Reveal>
+          </div>
+          <Reveal delay={0.2} className="experience-card-wrap">
+            <div className="experience-card">
+              <div className="experience-card__crenellation" aria-hidden="true" />
+              <div className="experience-card__top"><span>THE BABYLON HOUSE</span><span>بغداد / العراق</span></div>
+              <div className="experience-card__middle">
+                <motion.span
+                  className="experience-star"
+                  aria-hidden="true"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 32, ease: 'linear', repeat: Infinity }}
+                >
+                  <IshtarStar size={54} />
+                </motion.span>
+                <div><span>مفتوحون يومياً</span><strong>09:00 — 21:00</strong></div>
+              </div>
+              <div className="experience-card__bottom">
+                <span>شارع الأميرات، المنصور</span>
+                <a href="tel:+9647800000000" aria-label="اتصل بأوروم"><Icon name="phone" size={16} /></a>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
 
+      {/* ======= footer ======= */}
       <footer className="site-footer section-dark">
-        <div className="content-width footer-top"><AurumMark inverse /><div className="footer-statement">طريقك يبدأ<br /><em>من هنا.</em></div><div className="footer-contact"><span>تحدث مع مستشار</span><a href="tel:+9647800000000">+964 780 000 0000</a><button onClick={() => setModalOpen(true)}>احجز موعداً <Icon name="arrow" size={15} /></button></div></div>
-        <div className="content-width footer-bottom"><span>© 2025 أوروم موتورز — العراق</span><div><a href="#experience">انستغرام</a><a href="#experience">لينكدإن</a><a href="#experience">سياسة الخصوصية</a></div><button className="back-top" aria-label="العودة إلى الأعلى" onClick={() => scrollTo('experience')}><Icon name="arrowUp" size={16} /></button></div>
+        <div className="footer-ziggurat" aria-hidden="true">
+          <svg viewBox="0 0 1440 110" preserveAspectRatio="none">
+            <path d="M0 110V84h180V64h90V44h60V24h70V6h120V24h90V44h50V64h80V84h120V58h90V34h70V16h100V34h80V58h60V84h180v26Z" />
+          </svg>
+        </div>
+        <div className="content-width footer-top">
+          <BabylonMark inverse />
+          <div className="footer-statement">طريقك يبدأ<br /><em>من أرض الحضارات.</em></div>
+          <div className="footer-contact">
+            <span>تحدث مع مستشار</span>
+            <a href="tel:+9647800000000" dir="ltr">+964 780 000 0000</a>
+            <button onClick={() => setModalOpen(true)}>احجز موعداً <Icon name="arrow" size={15} /></button>
+          </div>
+        </div>
+        <div className="content-width footer-bottom">
+          <span>© 2025 أوروم موتورز — بابل، العراق</span>
+          <span className="footer-cuneiform" aria-hidden="true">𒀭 𒁹 𒆠 𒈗 𒌓 𒐕 𒄑 𒉺</span>
+          <div className="footer-links">
+            <a href="#experience" onClick={(event) => { event.preventDefault(); scrollTo('experience'); }}>انستغرام</a>
+            <a href="#experience" onClick={(event) => { event.preventDefault(); scrollTo('experience'); }}>لينكدإن</a>
+            <a href="#experience" onClick={(event) => { event.preventDefault(); scrollTo('experience'); }}>سياسة الخصوصية</a>
+          </div>
+          <button className="back-top" aria-label="العودة إلى الأعلى" onClick={() => scrollTo('experience')}><Icon name="arrowUp" size={16} /></button>
+        </div>
       </footer>
 
-      {modalOpen && <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) { setModalOpen(false); setSubmitted(false); } }}>
-        <div className="booking-modal" role="dialog" aria-modal="true" aria-labelledby="booking-title">
-          <button className="modal-close" aria-label="إغلاق" onClick={() => { setModalOpen(false); setSubmitted(false); }}><Icon name="close" size={18} /></button>
-          {!submitted ? <>
-            <div className="modal-kicker"><Icon name="calendar" size={17} /> تجربة خاصة في صالة أوروم</div>
-            <h2 id="booking-title">احجز لحظتك<br /><em>الأولى.</em></h2>
-            <p>أخبرنا بالوقت المناسب لك، وسيتواصل معك مستشار أوروم لتأكيد الموعد.</p>
-            <form onSubmit={onBookingSubmit}><label>الاسم الكامل<input required name="name" placeholder="اكتب اسمك" /></label><div className="form-row"><label>رقم الهاتف<input required type="tel" name="phone" placeholder="07XX XXX XXXX" /></label><label>اليوم المفضل<input required type="date" name="date" /></label></div><label>اختر السيارة<select name="car" defaultValue="AURUM S7"><option>AURUM S7</option><option>AURUM S7 BLACK</option><option>AURUM GT</option></select></label><button className="form-submit" type="submit">أرسل الطلب <Icon name="arrow" size={16} /></button></form>
-          </> : <div className="modal-success"><span className="success-icon"><Icon name="check" size={24} /></span><h2>وصلنا طلبك<br /><em>بنجاح.</em></h2><p>شكراً لثقتك. سيتواصل معك مستشار أوروم خلال دقائق لتأكيد موعدك.</p><button className="form-submit" onClick={() => { setModalOpen(false); setSubmitted(false); }}>تم</button></div>}
-        </div>
-      </div>}
-      <div className={`loading-screen ${loadedCount === frames.length ? 'loading-screen--done' : ''}`} aria-hidden="true"><AurumMark /><span>تحضير التجربة {loadedCount}/03</span></div>
+      {/* ======= booking modal ======= */}
+      <AnimatePresence>
+        {modalOpen && (
+          <motion.div
+            className="modal-backdrop"
+            role="presentation"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35 }}
+            onMouseDown={(event) => { if (event.target === event.currentTarget) closeModal(); }}
+          >
+            <motion.div
+              className="booking-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="booking-title"
+              initial={{ opacity: 0, y: 42, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 28, scale: 0.96 }}
+              transition={{ duration: 0.5, ease: easing }}
+            >
+              <div className="modal-crenellation" aria-hidden="true" />
+              <button className="modal-close" aria-label="إغلاق" onClick={closeModal}><Icon name="close" size={18} /></button>
+              {!submitted ? (
+                <>
+                  <div className="modal-kicker"><Icon name="calendar" size={17} /> تجربة خاصة في صالة أوروم</div>
+                  <h2 id="booking-title">احجز لحظتك<br /><em>الأولى.</em></h2>
+                  <p>أخبرنا بالوقت المناسب لك، وسيتواصل معك مستشار أوروم لتأكيد الموعد.</p>
+                  <form onSubmit={onBookingSubmit}>
+                    <label>الاسم الكامل<input required name="name" placeholder="اكتب اسمك" /></label>
+                    <div className="form-row">
+                      <label>رقم الهاتف<input required type="tel" name="phone" placeholder="07XX XXX XXXX" /></label>
+                      <label>اليوم المفضل<input required type="date" name="date" /></label>
+                    </div>
+                    <label>اختر السيارة
+                      <select name="car" defaultValue="AURUM ISHTAR">
+                        <option>AURUM ISHTAR</option>
+                        <option>AURUM BABEL</option>
+                        <option>AURUM ZIQQURA GT</option>
+                      </select>
+                    </label>
+                    <button className="form-submit" type="submit">أرسل الطلب <Icon name="arrow" size={16} /></button>
+                  </form>
+                </>
+              ) : (
+                <div className="modal-success">
+                  <motion.span
+                    className="success-icon"
+                    initial={{ scale: 0.4, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 220, damping: 15 }}
+                  >
+                    <Icon name="check" size={24} />
+                  </motion.span>
+                  <h2>وصلنا طلبك<br /><em>بنجاح.</em></h2>
+                  <p>شكراً لثقتك. سيتواصل معك مستشار أوروم خلال دقائق لتأكيد موعدك.</p>
+                  <button className="form-submit" onClick={closeModal}>تم</button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ======= loading ======= */}
+      <div className={`loading-screen ${loadedCount >= frames.length ? 'loading-screen--done' : ''}`} aria-hidden="true">
+        <motion.span
+          className="loading-star"
+          animate={{ rotate: 360, scale: [1, 1.08, 1] }}
+          transition={{ rotate: { duration: 14, ease: 'linear', repeat: Infinity }, scale: { duration: 2.4, ease: 'easeInOut', repeat: Infinity } }}
+        >
+          <IshtarStar size={64} />
+        </motion.span>
+        <BabylonMark />
+        <span className="loading-label">تحضير التجربة {loadedCount}/03</span>
+      </div>
     </main>
   );
 }
