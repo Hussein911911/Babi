@@ -30,6 +30,10 @@ type Car = {
   year: string;
   image: string;
   tag?: string;
+  engine: string;
+  power: string;
+  exterior: string[];
+  interior: string[];
 };
 
 const frames: Frame[] = [
@@ -60,9 +64,9 @@ const frames: Frame[] = [
 ];
 
 const cars: Car[] = [
-  { name: 'AURUM ISHTAR', arabicName: 'عشتار', type: 'سيدان ملكية', price: '78,500,000', year: '2025', image: '/assets/babylon-hero.png', tag: 'الأكثر طلباً' },
-  { name: 'AURUM BABEL', arabicName: 'بابل', type: 'إصدار خاص', price: '86,900,000', year: '2025', image: '/assets/babylon-showroom.png', tag: 'حصري' },
-  { name: 'AURUM ZIQQURA GT', arabicName: 'زقّورة', type: 'جراند تورر', price: '94,200,000', year: '2024', image: '/assets/babylon-ziggurat.png' },
+  { name: 'AURUM ISHTAR', arabicName: 'عشتار', type: 'سيدان ملكية', price: '78,500,000', year: '2025', image: '/assets/babylon-hero.png', tag: 'الأكثر طلباً', engine: 'V6 / 3.0L توربو', power: '470 حصان', exterior: ['إضاءة LED Matrix', 'جنوط ألماسية 21 بوصة', 'طلاء أزرق لازوردي لامع'], interior: ['جلد نابا بلون الرمل', 'شاشة قيادة 14.5 بوصة', 'نظام صوت محيطي فاخر'] },
+  { name: 'AURUM BABEL', arabicName: 'بابل', type: 'إصدار خاص', price: '86,900,000', year: '2025', image: '/assets/babylon-showroom.png', tag: 'حصري', engine: 'V8 / 4.0L توين توربو', power: '550 حصان', exterior: ['حزمة Black Chrome', 'سقف بانورامي ذكي', 'أبواب إغلاق كهربائي'], interior: ['مقاعد جلدية بتطريز عشتار', 'تبريد وتسخين وتدليك', 'كونسول خلفي تنفيذي'] },
+  { name: 'AURUM ZIQQURA GT', arabicName: 'زقّورة', type: 'جراند تورر', price: '94,200,000', year: '2024', image: '/assets/babylon-ziggurat.png', engine: 'V8 / 4.4L', power: '610 حصان', exterior: ['كربون فايبر رياضي', 'فرامل خزفية', 'عادم رياضي مزدوج'], interior: ['مقصورة Alcantara', 'مقاعد رياضية مريحة', 'شحن لاسلكي ومساعد قيادة'] },
 ];
 
 const filters = ['الكل', 'سيدان', 'إصدار خاص', 'جراند تورر'];
@@ -231,6 +235,11 @@ function App() {
   const [progress, setProgress] = useState(0);
   const [loadedCount, setLoadedCount] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authRole, setAuthRole] = useState<'staff' | 'manager'>('staff');
+  const [signedIn, setSignedIn] = useState<string | null>(() => localStorage.getItem('aurum-role'));
+  const [authError, setAuthError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [activeFilter, setActiveFilter] = useState('الكل');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -405,6 +414,21 @@ function App() {
     setSubmitted(false);
   };
 
+  const onAuthSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get('email') || '');
+    const password = String(data.get('password') || '');
+    const valid = authRole === 'manager' ? email === 'manager@aurum.iq' && password === 'babil2025' : email === 'staff@aurum.iq' && password === 'aurum123';
+    if (!valid) { setAuthError('بيانات الدخول غير صحيحة. جرّب الحساب التجريبي أدناه.'); return; }
+    const role = authRole === 'manager' ? 'manager' : 'staff';
+    localStorage.setItem('aurum-role', role);
+    setSignedIn(role);
+    setAuthOpen(false);
+  };
+
+  const signOut = () => { localStorage.removeItem('aurum-role'); setSignedIn(null); setAuthOpen(false); };
+
   return (
     <main className="site-shell">
       <motion.div className="page-progress" style={{ scaleX: pageProgress }} aria-hidden="true" />
@@ -454,6 +478,7 @@ function App() {
               <button className={`search-button ${searchOpen ? 'search-button--active' : ''}`} aria-label="البحث" onClick={() => setSearchOpen((value) => !value)}>
                 <Icon name="search" size={19} />
               </button>
+              <button className="staff-login-button" onClick={() => { setAuthError(''); setAuthOpen(true); }}>{signedIn ? `لوحة ${signedIn === 'manager' ? 'المدير' : 'الموظف'}` : 'دخول الموظفين'}</button>
               <button className="topbar-cta" onClick={() => setModalOpen(true)}>احجز تجربة قيادة <Icon name="arrow" size={15} /></button>
             </div>
             <AnimatePresence>
@@ -629,7 +654,7 @@ function App() {
                     {car.tag && <span className="car-tag">{car.tag}</span>}
                     <span className="car-number">0{index + 1}</span>
                     <span className="car-rosette" aria-hidden="true"><Rosette size={22} /></span>
-                    <button className="card-arrow" aria-label={`تفاصيل ${car.name}`} onClick={() => setModalOpen(true)}><Icon name="arrow" size={17} /></button>
+                    <button className="card-arrow" aria-label={`تفاصيل ${car.name}`} onClick={() => setSelectedCar(car)}><Icon name="arrow" size={17} /></button>
                   </div>
                   <div className="car-info">
                     <div>
@@ -643,7 +668,7 @@ function App() {
             </AnimatePresence>
           </motion.div>
           <Reveal delay={0.1}>
-            <div className="collection-footer"><span>01 — 0{filteredCars.length}</span><div className="collection-rule" /><span>معرض أوروم، بغداد</span></div>
+            <div className="collection-footer"><span>01 — 0{filteredCars.length}</span><div className="collection-rule" /><span>معرض أوروم، بابل</span></div>
           </Reveal>
         </div>
       </section>
@@ -715,7 +740,7 @@ function App() {
           <Reveal delay={0.2} className="experience-card-wrap">
             <div className="experience-card">
               <div className="experience-card__crenellation" aria-hidden="true" />
-              <div className="experience-card__top"><span>THE BABYLON HOUSE</span><span>بغداد / العراق</span></div>
+              <div className="experience-card__top"><span>THE BABYLON HOUSE</span><span>بابل / العراق</span></div>
               <div className="experience-card__middle">
                 <motion.span
                   className="experience-star"
@@ -763,6 +788,38 @@ function App() {
           <button className="back-top" aria-label="العودة إلى الأعلى" onClick={() => scrollTo('experience')}><Icon name="arrowUp" size={16} /></button>
         </div>
       </footer>
+
+      {/* ======= vehicle detail drawer ======= */}
+      <AnimatePresence>
+        {selectedCar && (
+          <motion.div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedCar(null); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="vehicle-modal" role="dialog" aria-modal="true" initial={{ opacity: 0, y: 35 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 25 }}>
+              <button className="modal-close" aria-label="إغلاق" onClick={() => setSelectedCar(null)}><Icon name="close" size={18} /></button>
+              <div className="vehicle-modal__image"><img src={selectedCar.image} alt={selectedCar.name} /><span>360° VIEW READY</span></div>
+              <div className="vehicle-modal__body" dir="rtl">
+                <div className="section-kicker"><span className="kicker-number">{selectedCar.year}</span><span className="kicker-line" /><span>{selectedCar.type}</span></div>
+                <h2>{selectedCar.name}<em> «{selectedCar.arabicName}»</em></h2>
+                <p className="vehicle-lead">تفاصيل مختارة بعناية — من الخط الخارجي إلى آخر غرزة داخل المقصورة.</p>
+                <div className="vehicle-stats"><div><small>المحرك</small><b>{selectedCar.engine}</b></div><div><small>القوة</small><b>{selectedCar.power}</b></div><div><small>السعر</small><b>{selectedCar.price} <i>د.ع</i></b></div></div>
+                <div className="vehicle-columns"><div><h4>من الخارج</h4>{selectedCar.exterior.map(item => <span key={item}><Icon name="check" size={14} />{item}</span>)}</div><div><h4>من الداخل</h4>{selectedCar.interior.map(item => <span key={item}><Icon name="check" size={14} />{item}</span>)}</div></div>
+                <button className="form-submit" onClick={() => { setSelectedCar(null); setModalOpen(true); }}>احجز تجربة هذا الطراز <Icon name="arrow" size={16} /></button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ======= staff login ======= */}
+      <AnimatePresence>
+        {authOpen && (
+          <motion.div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) setAuthOpen(false); }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="booking-modal auth-modal" role="dialog" aria-modal="true" initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
+              <div className="modal-crenellation" /><button className="modal-close" aria-label="إغلاق" onClick={() => setAuthOpen(false)}><Icon name="close" size={18} /></button>
+              {signedIn ? <><div className="modal-kicker">لوحة التحكم الداخلية</div><h2>مرحباً بك في<br /><em>بيت أوروم.</em></h2><p>أنت مسجل الدخول بصلاحية {signedIn === 'manager' ? 'المدير' : 'الموظف'}.</p><div className="dashboard-mini"><span>طلبات اليوم <b>08</b></span><span>سيارات المخزون <b>24</b></span><span>مواعيد التجربة <b>12</b></span></div><button className="form-submit" onClick={signOut}>تسجيل الخروج</button></> : <><div className="modal-kicker">منظومة أوروم الداخلية</div><h2>دخول<br /><em>الفريق.</em></h2><p>للموظفين والمدير فقط — اختر مستوى الصلاحية وسجّل الدخول لإدارة العملاء والمخزون.</p><div className="role-switch"><button className={authRole === 'staff' ? 'is-active' : ''} onClick={() => setAuthRole('staff')}>موظف</button><button className={authRole === 'manager' ? 'is-active' : ''} onClick={() => setAuthRole('manager')}>مدير</button></div><form onSubmit={onAuthSubmit}><label>البريد الإلكتروني<input name="email" type="email" placeholder={authRole === 'manager' ? 'manager@aurum.iq' : 'staff@aurum.iq'} required /></label><label>كلمة المرور<input name="password" type="password" placeholder="••••••••" required /></label>{authError && <small className="auth-error">{authError}</small>}<button className="form-submit" type="submit">دخول آمن <Icon name="arrow" size={16} /></button></form><div className="demo-credentials">تجريبي: {authRole === 'manager' ? 'manager@aurum.iq / babil2025' : 'staff@aurum.iq / aurum123'}</div></>}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ======= booking modal ======= */}
       <AnimatePresence>
