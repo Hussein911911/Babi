@@ -1,4 +1,13 @@
-node_modules
-dist
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+.env
+.env.local
+prisma/dev.db
+prisma/dev.db-journal
 .DS_Store
-*.local
+*.tsbuildinfo
+next-env.d.ts
