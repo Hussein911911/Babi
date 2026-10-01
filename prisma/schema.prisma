@@ -1,0 +1,151 @@
+// Babylon Motors — Database schema
+// Demo uses SQLite so it runs anywhere with zero setup.
+// For production: change provider to "postgresql" and update DATABASE_URL.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         String     @default("STAFF") // ADMIN | STAFF
+  createdAt    DateTime   @default(now())
+  auditLogs    AuditLog[]
+}
+
+model Car {
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  brand        String
+  model        String
+  year         Int
+  priceUSD     Int
+  negotiable   Boolean   @default(false)
+  mileage      Int       @default(0) // km
+  transmission String    @default("أوتوماتيك")
+  fuel         String    @default("بنزين")
+  bodyType     String    @default("سيدان") // سيدان | SUV | بيك أب | كوبيه
+  condition    String    @default("جديد") // جديد | مستعمل | وارد أمريكي | وارد خليجي
+  colorName    String    @default("أبيض لؤلؤي")
+  colorHex     String    @default("#f4f4f4")
+  engine       String    @default("")
+  cylinders    Int       @default(4)
+  horsepower   Int       @default(0)
+  torque       Int       @default(0) // Nm
+  acceleration Float     @default(0) // 0-100 km/h seconds
+  drivetrain   String    @default("دفع أمامي")
+  seats        Int       @default(5)
+  doors        Int       @default(4)
+  fuelEconomy  String    @default("") // e.g. 12 كم/لتر
+  lengthMm     Int       @default(0)
+  widthMm      Int       @default(0)
+  heightMm     Int       @default(0)
+  weightKg     Int       @default(0)
+  safety       String    @default("[]") // JSON array
+  comfort      String    @default("[]") // JSON array
+  exterior     String    @default("[]") // JSON array
+  images       String    @default("[]") // JSON array of URLs
+  description  String    @default("")
+  vin          String?
+  inspection   String    @default("") // condition/inspection report
+  warranty     String    @default("")
+  featured     Boolean   @default(false)
+  sold         Boolean   @default(false)
+  views        Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  inquiries    Inquiry[]
+  bookings     Booking[]
+}
+
+model Inquiry {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  email     String?
+  message   String
+  type      String   @default("عام") // عام | عرض سعر | مقايضة | بيع سيارة | اتصل بي
+  status    String   @default("NEW") // NEW | FOLLOWED | CLOSED
+  car       Car?     @relation(fields: [carId], references: [id], onDelete: SetNull)
+  carId     String?
+  createdAt DateTime @default(now())
+}
+
+model Booking {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String
+  date      String
+  time      String
+  status    String   @default("PENDING") // PENDING | CONFIRMED | DONE | CANCELLED
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  carId     String
+  createdAt DateTime @default(now())
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  excerpt   String
+  content   String
+  cover     String   @default("")
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model Subscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Job {
+  id              String    @id @default(cuid())
+  title           String
+  category        String    @default("عام")
+  location        String    @default("الحلة")
+  salary          String    @default("")
+  hours           String    @default("")
+  description     String    @default("")
+  // ── Employer details: hidden from applicants until they press "إتمام" ──
+  employerName    String
+  employerPhone   String
+  employerAddress String    @default("")
+  active          Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  cards           JobCard[]
+}
+
+model JobCard {
+  id          String    @id @default(cuid())
+  code        String    @unique // printed on the card + encoded in the QR
+  status      String    @default("NEW") // NEW | COMPLETED
+  fullName    String    @default("")
+  age         Int       @default(0)
+  phone       String    @default("")
+  address     String    @default("")
+  education   String    @default("")
+  experience  String    @default("")
+  job         Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  jobId       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  detail    String   @default("")
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+  createdAt DateTime @default(now())
+}
